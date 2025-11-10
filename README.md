@@ -98,6 +98,8 @@ python subdomain_takeover.py -h
 
 #### Cloud Services JSON Format (`cloud_services.json`)
 
+This file contains cloud services tracked by the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) project. Format:
+
 ```json
 {
     "AWS/S3": "s3.amazonaws.com",
@@ -191,7 +193,7 @@ Summary:
 ## Configuration Files
 
 ### `cloud_services.json`
-Contains a mapping of cloud service names to their domain patterns. This file can be customized to include additional services.
+Contains a mapping of cloud service names to their domain patterns tracked by the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) project. This file lists cloud services that may be vulnerable to subdomain takeover. The file can be customized to include additional services.
 
 ### `fingerprints.json`
 Contains detailed fingerprint data from the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) project, including:
@@ -241,7 +243,9 @@ The script now integrates with the [can-i-take-over-xyz](https://github.com/EdOv
 
 ## License
 
-[Add your license information here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+MIT License is a permissive free software license that allows commercial use, modification, distribution, and private use with minimal restrictions.
 
 ## Contributing
 
@@ -253,6 +257,6 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ---
 
-**Last Updated**: [Current Date]
+**Last Updated**: January 15, 2025
 **Version**: 1.0.0
 
