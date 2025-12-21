@@ -11,18 +11,18 @@ This script scans a list of subdomains to identify potential subdomain takeover 
 ## Features
 
 ### Current Features
-- ✅ DNS CNAME record enumeration for subdomains
-- ✅ Cloud service detection via CNAME matching
-- ✅ **Vulnerability status checking** based on [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) database
-- ✅ **Automatic verification** of whether a cloud service is actually vulnerable or has been patched
-- ✅ **Fingerprint matching** for accurate vulnerability detection
-- ✅ **NXDOMAIN checking** for services that require non-existent domains
-- ✅ **HTTP status code verification** for specific vulnerability patterns
-- ✅ **CI/CD verification status** display
-- ✅ HTTP vulnerability verification
-- ✅ Colorized console output for easy reading
-- ✅ Support for multiple cloud services (AWS, Azure, GitHub, Heroku, etc.)
-- ✅ Backward compatibility with legacy cloud_services.json format
+- DNS CNAME record enumeration for subdomains
+- Cloud service detection via CNAME matching
+-  **Vulnerability status checking** based on [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) database
+-  **Automatic verification** of whether a cloud service is actually vulnerable or has been patched
+-  **Fingerprint matching** for accurate vulnerability detection
+-  **NXDOMAIN checking** for services that require non-existent domains
+-  **HTTP status code verification** for specific vulnerability patterns
+-  **CI/CD verification status** display
+-  HTTP vulnerability verification
+-  Colorized console output for easy reading
+-  Support for multiple cloud services (AWS, Azure, GitHub, Heroku, etc.)
+-  Backward compatibility with legacy cloud_services.json format
 
 ## Installation
 
@@ -133,7 +133,7 @@ subdomain3.example.com
 5. **Output**: Results are displayed with color-coded output indicating:
    - Found CNAME records (Yellow)
    - Matched cloud services with status (Red/Yellow/Green)
-   - Confirmed vulnerabilities (Red with 🚨)
+   - Confirmed vulnerabilities
    - CI/CD verification status
    - Discussion and documentation links
 
@@ -161,7 +161,7 @@ Cloud service matches (with vulnerability status):
 
   [+] CNAME: example.github.io
      Service: Github
-     Status: 🟡 Edge case
+     Status: Edge case
      CI/CD Verified: ✗ Not verified
      ⚠ Edge case: Requires manual verification
 
@@ -175,10 +175,10 @@ Cloud service matches (with vulnerability status):
 
   [+] CNAME: example.s3.amazonaws.com
      Service: AWS/S3
-     Status: 🔴 Vulnerable
+     Status: Vulnerable
      CI/CD Verified: ✓ Pass
      [*] Verifying vulnerability fingerprint...
-     🚨 VULNERABLE: vulnerable.example.com is confirmed vulnerable!
+      VULNERABLE: vulnerable.example.com is confirmed vulnerable!
      Fingerprint matched: The specified bucket does not exist
      HTTP Status: 404
      Discussion: [Issue #36](https://github.com/EdOverflow/can-i-take-over-xyz/issues/36)
@@ -213,18 +213,18 @@ Contains detailed fingerprint data from the [can-i-take-over-xyz](https://github
 
 The script now integrates with the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) database to:
 
-1. ✅ **Check Vulnerability Status**: Verify if a detected cloud service is actually vulnerable or has been patched
-2. ✅ **Fingerprint Matching**: Use specific error messages and fingerprints to confirm vulnerabilities
-3. ✅ **NXDOMAIN Detection**: Identify services that require non-existent domains (NXDOMAIN)
-4. ✅ **Status Filtering**: Only report services that are confirmed vulnerable (not patched or edge cases)
-5. ✅ **CI/CD Verification**: Show whether the vulnerability has been verified by automated CI/CD tests
-6. ✅ **Smart Detection**: Skips fingerprint verification for services that are known to be patched or not vulnerable
+1.  **Check Vulnerability Status**: Verify if a detected cloud service is actually vulnerable or has been patched
+2.  **Fingerprint Matching**: Use specific error messages and fingerprints to confirm vulnerabilities
+3.  **NXDOMAIN Detection**: Identify services that require non-existent domains (NXDOMAIN)
+4.  **Status Filtering**: Only report services that are confirmed vulnerable (not patched or edge cases)
+5.  **CI/CD Verification**: Show whether the vulnerability has been verified by automated CI/CD tests
+6.  **Smart Detection**: Skips fingerprint verification for services that are known to be patched or not vulnerable
 
 ### Vulnerability Status Types
 
-- **🔴 Vulnerable**: Service is confirmed vulnerable to subdomain takeover
-- **🟢 Not vulnerable**: Service has been patched or is not vulnerable
-- **🟡 Edge case**: Service may be vulnerable but requires manual verification or specific conditions
+- ** Vulnerable**: Service is confirmed vulnerable to subdomain takeover
+- ** Not vulnerable**: Service has been patched or is not vulnerable
+- ** Edge case**: Service may be vulnerable but requires manual verification or specific conditions
 
 ## References
 
