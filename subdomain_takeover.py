@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import dns.resolver
 import json
+import os
 import requests
-import sys
 import argparse
 import re
 import urllib3
-from urllib.parse import urlparse
 
 from colorama import Fore, Style, init
 
@@ -27,6 +26,11 @@ ascii_banner = r"""
 
 Ironsky Team - By Moyindu
 """
+# Databases shipped with the project. Used unless the user passes -p or -s.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_FINGERPRINTS = os.path.join(SCRIPT_DIR, 'fingerprints.json')
+DEFAULT_CLOUD_SERVICES = os.path.join(SCRIPT_DIR, 'cloud_services.json')
+
 # Function to define all arguments
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -34,32 +38,44 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Use fingerprints database (recommended)
-  python subdomain_takeover.py -f subdomains.txt -p fingerprints.json
-  
-  # Use legacy cloud services database
-  python subdomain_takeover.py -f subdomains.txt -s cloud_services.json
-  
-  # Use both (fingerprints preferred, cloud_services as fallback)
-  python subdomain_takeover.py -f subdomains.txt -p fingerprints.json -s cloud_services.json
+  # Scan a subdomain list (uses project fingerprints.json and cloud_services.json)
+  python subdomain_takeover.py -f subdomains.txt
+
+  # Override the fingerprints database
+  python subdomain_takeover.py -f subdomains.txt -p custom_fingerprints.json
+
+  # Override the cloud services database
+  python subdomain_takeover.py -f subdomains.txt -s custom_cloud_services.json
+
+  # Write a text result for each subdomain that matches a cloud service
+  python subdomain_takeover.py -f subdomains.txt -o results.txt
         """
     )
     parser.add_argument('-f', '--file', '--filename', dest='subdomains_file', required=True,
                        help='Text file containing list of subdomains (one per line)')
     parser.add_argument('-p', '--fingerprints', dest='fingerprints_file',
-                       help='JSON file containing fingerprints database (recommended)')
+                       default=DEFAULT_FINGERPRINTS,
+                       help='JSON file containing fingerprints database '
+                            '(default: fingerprints.json in the project directory)')
     parser.add_argument('-s', '--service', '--services', dest='cloud_services_file',
-                       help='JSON file containing cloud services (legacy format)')
+                       default=DEFAULT_CLOUD_SERVICES,
+                       help='JSON file containing cloud services '
+                            '(default: cloud_services.json in the project directory)')
+    parser.add_argument('-o', '--output', dest='output_file',
+                       help='Write a text result for each subdomain that matches a cloud service: '
+                            'subdomain, cloud service, and status '
+                            '(vulnerable, potentially vulnerable, or not vulnerable). '
+                            'Subdomains with no cloud service are omitted')
     return parser.parse_args()
 
 # Function to load cloud services from a JSON file
 def load_cloud_services(filename):
-    with open(filename, 'r') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         return json.load(file)
 
 # Function to load fingerprints from a JSON file
 def load_fingerprints(filename):
-    with open(filename, 'r') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         return json.load(file)
 
 # Function to get CNAME records for a subdomain
@@ -79,15 +95,6 @@ def check_nxdomain(domain):
         return True  # NXDOMAIN - domain doesn't exist
     except Exception:
         return None  # Could not determine
-
-# Function to check if any CNAME matches cloud services
-# def check_cnames_against_cloud_services(cnames, cloud_services):
-#     matches = []
-#     for cname in cnames:
-#         for service, domain in cloud_services.items():
-#             if domain in cname:
-#                 matches.append((cname, service))
-#     return matches
 
 # Function to check if any CNAME matches cloud services using regex
 def check_cnames_against_cloud_services(cnames, cloud_services):
@@ -125,14 +132,6 @@ def check_cnames_against_fingerprints(cnames, fingerprints):
                     })
                     break  # Don't add the same service twice
     return matches
-
-# Function to send an HTTP request to the subdomain
-def check_http(cname):
-    try:
-        response = requests.get(f"https://{cname}", timeout=9)
-        return response.status_code == 200
-    except requests.RequestException:
-        return False
 
 # Function to check HTTP response against fingerprint pattern
 def check_fingerprint(subdomain, fingerprint_data):
@@ -189,22 +188,38 @@ def check_fingerprint(subdomain, fingerprint_data):
     
     return (False, "No matching response", None)
 
-# Function to send an HTTP request to the CNAME
-# def check_http(cname, subdomain):
-#     try:
-#         response = requests.get(f"http://{cname}", timeout=5)
-#         if response.status_code == 200:
-#             print(f"{Fore.LIGHTRED_EX}[+] {subdomain} is Vulnerable{Style.RESET_ALL}")
-#             return True
-#         else:
-#             print(f"{Fore.RED}We got this for {cname} - Response Code: {response.status_code}{Style.RESET_ALL}")
-#             return False
-#     except requests.RequestException:
-#         print(f"{Fore.RED}We got this for {cname} - Request failed{Style.RESET_ALL}")
-#         return False
+STATUS_NOT_VULNERABLE = "not vulnerable"
+STATUS_POTENTIALLY_VULNERABLE = "potentially vulnerable"
+STATUS_VULNERABLE = "vulnerable"
+STATUS_RANK = {
+    STATUS_NOT_VULNERABLE: 0,
+    STATUS_POTENTIALLY_VULNERABLE: 1,
+    STATUS_VULNERABLE: 2,
+}
+
+def summarize_findings(findings):
+    """Collapse matches for one subdomain into a service name and one status."""
+    if not findings:
+        return "none", STATUS_NOT_VULNERABLE
+
+    best_rank = max(STATUS_RANK[status] for _, status in findings)
+    services = []
+    seen = set()
+    for service, status in findings:
+        if STATUS_RANK[status] == best_rank and service not in seen:
+            seen.add(service)
+            services.append(service)
+    status = next(name for name, rank in STATUS_RANK.items() if rank == best_rank)
+    return ", ".join(services), status
+
+def write_results(filename, results):
+    with open(filename, 'w', encoding='utf-8') as handle:
+        handle.write("subdomain | cloud service | status\n")
+        for subdomain, service, status in results:
+            handle.write(f"{subdomain} | {service} | {status}\n")
 
 # Main function with fingerprints support
-def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
+def main(subdomains_file, fingerprints_file=None, cloud_services_file=None, output_file=None):
     fingerprints = None
     cloud_services = None
     
@@ -212,7 +227,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
     if fingerprints_file:
         try:
             fingerprints = load_fingerprints(fingerprints_file)
-            print(f"{Fore.GREEN}[+] Loaded fingerprints database{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}[+] Loaded fingerprints database: {fingerprints_file}{Style.RESET_ALL}")
         except FileNotFoundError:
             print(f"{Fore.YELLOW}[!] Fingerprints file not found: {fingerprints_file}{Style.RESET_ALL}")
         except Exception as e:
@@ -222,7 +237,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
     if cloud_services_file:
         try:
             cloud_services = load_cloud_services(cloud_services_file)
-            print(f"{Fore.GREEN}[+] Loaded cloud services database{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}[+] Loaded cloud services database: {cloud_services_file}{Style.RESET_ALL}")
         except FileNotFoundError:
             print(f"{Fore.YELLOW}[!] Cloud services file not found: {cloud_services_file}{Style.RESET_ALL}")
         except Exception as e:
@@ -230,19 +245,27 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
     
     if not fingerprints and not cloud_services:
         print(f"{Fore.RED}[!] No fingerprint or cloud service database loaded!{Style.RESET_ALL}")
-        return
+        return 1
     
     vulnerable_count = 0
     total_checked = 0
+    results = []
     
     # Process each subdomain
-    with open(subdomains_file, 'r') as file:
+    try:
+        subdomain_lines = open(subdomains_file, 'r', encoding='utf-8')
+    except FileNotFoundError:
+        print(f"{Fore.RED}[!] Subdomain file not found: {subdomains_file}{Style.RESET_ALL}")
+        return 1
+
+    with subdomain_lines as file:
         for subdomain in file:
             subdomain = subdomain.strip()
             if not subdomain:
                 continue
             
             total_checked += 1
+            findings = []
             
             # Step 1: Find all CNAME records
             cnames = get_cnames(subdomain)
@@ -292,6 +315,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
                                 
                                 if is_confirmed:
                                     vulnerable_count += 1
+                                    findings.append((service_name, STATUS_VULNERABLE))
                                     print(f"     {Fore.LIGHTRED_EX}🚨 VULNERABLE: {subdomain} is confirmed vulnerable!{Style.RESET_ALL}")
                                     print(f"     {Fore.LIGHTRED_EX}   Fingerprint matched: {match['fingerprint'][:50]}...{Style.RESET_ALL}")
                                     if status_code:
@@ -301,12 +325,16 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
                                     if match['documentation']:
                                         print(f"     {Fore.CYAN}   Documentation: {match['documentation']}{Style.RESET_ALL}")
                                 elif is_confirmed is False:
+                                    findings.append((service_name, STATUS_NOT_VULNERABLE))
                                     print(f"     {Fore.GREEN}✓ Not vulnerable: Fingerprint not matched{Style.RESET_ALL}")
                                 else:
+                                    findings.append((service_name, STATUS_POTENTIALLY_VULNERABLE))
                                     print(f"     {Fore.YELLOW}⚠ Could not verify: {response_info}{Style.RESET_ALL}")
                             elif status == "Edge case":
+                                findings.append((service_name, STATUS_POTENTIALLY_VULNERABLE))
                                 print(f"     {Fore.YELLOW}⚠ Edge case: Requires manual verification{Style.RESET_ALL}")
                             else:
+                                findings.append((service_name, STATUS_NOT_VULNERABLE))
                                 print(f"     {Fore.GREEN}✓ Not vulnerable: Service has been patched{Style.RESET_ALL}")
                     
                     # Fallback to cloud_services if no fingerprint matches
@@ -315,6 +343,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
                         if old_matches:
                             print(f"\n{Fore.YELLOW}Cloud service matches (legacy format - no vulnerability status):{Style.RESET_ALL}")
                             for cname, service in old_matches:
+                                findings.append((service, STATUS_POTENTIALLY_VULNERABLE))
                                 print(f"  {Fore.YELLOW}[+] {cname}{Style.RESET_ALL} Uses Cloud Service: {Fore.LIGHTRED_EX}{service}{Style.RESET_ALL}")
                                 print(f"     {Fore.YELLOW}⚠ No vulnerability status available - using legacy database{Style.RESET_ALL}")
                 
@@ -324,11 +353,15 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
                     if matches:
                         print(f"\n{Fore.YELLOW}Cloud service matches (legacy format):{Style.RESET_ALL}")
                         for cname, service in matches:
+                            findings.append((service, STATUS_POTENTIALLY_VULNERABLE))
                             print(f"  {Fore.YELLOW}[+] {cname}{Style.RESET_ALL} Uses Cloud Service: {Fore.LIGHTRED_EX}{service}{Style.RESET_ALL}")
                             print(f"     {Fore.YELLOW}⚠ No vulnerability status available - using legacy database{Style.RESET_ALL}")
             
             # No CNAME found - skip silently or show if verbose
             # (Keeping silent for cleaner output)
+            if findings:
+                service, status = summarize_findings(findings)
+                results.append((subdomain, service, status))
     
     # Summary
     print(f"\n{Fore.CYAN}{'='*70}{Style.RESET_ALL}")
@@ -336,7 +369,16 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None):
     print(f"  Total subdomains checked: {total_checked}")
     if fingerprints:
         print(f"  {Fore.LIGHTRED_EX}Confirmed vulnerable: {vulnerable_count}{Style.RESET_ALL}")
+    if output_file:
+        try:
+            write_results(output_file, results)
+            print(f"  {Fore.GREEN}Results written to {output_file}{Style.RESET_ALL}")
+        except OSError as e:
+            print(f"  {Fore.RED}Could not write results to {output_file}: {e}{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}{'='*70}{Style.RESET_ALL}\n")
+            return 1
     print(f"{Fore.CYAN}{'='*70}{Style.RESET_ALL}\n")
+    return 0
 
 # Example usage
 if __name__ == "__main__":
@@ -344,24 +386,18 @@ if __name__ == "__main__":
     
     # Parse command line arguments
     args = parse_args()
-    
-    # Check if at least one database is provided
-    if not args.fingerprints_file and not args.cloud_services_file:
-        print(f"{Fore.YELLOW}[!] Warning: No fingerprints or cloud services file provided{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}[-] Usage: python subdomain_takeover.py -f <subdomains_file> [-p <fingerprints_file>] [-s <cloud_services_file>]{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}[-] Use -h or --help for more information{Style.RESET_ALL}")
-        print()
-        sys.exit(1)
-    
+
     # Run main function
-    main(
+    exit_code = main(
         subdomains_file=args.subdomains_file,
         fingerprints_file=args.fingerprints_file,
-        cloud_services_file=args.cloud_services_file
+        cloud_services_file=args.cloud_services_file,
+        output_file=args.output_file
     )
-    
+
     print(f"{Fore.CYAN}Refer: https://github.com/EdOverflow/can-i-take-over-xyz/tree/master{Style.RESET_ALL}")
     print()
+    raise SystemExit(exit_code)
 
 
 

@@ -10,19 +10,20 @@ This script scans a list of subdomains to identify potential subdomain takeover 
 
 ## Features
 
-### Current Features
 - DNS CNAME record enumeration for subdomains
 - Cloud service detection via CNAME matching
--  **Vulnerability status checking** based on [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) database
--  **Automatic verification** of whether a cloud service is actually vulnerable or has been patched
--  **Fingerprint matching** for accurate vulnerability detection
--  **NXDOMAIN checking** for services that require non-existent domains
--  **HTTP status code verification** for specific vulnerability patterns
--  **CI/CD verification status** display
--  HTTP vulnerability verification
--  Colorized console output for easy reading
--  Support for multiple cloud services (AWS, Azure, GitHub, Heroku, etc.)
--  Backward compatibility with legacy cloud_services.json format
+- **Vulnerability status checking** based on the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) database
+- **Automatic verification** of whether a cloud service is actually vulnerable or has been patched
+- **Fingerprint matching** for accurate vulnerability detection
+- **NXDOMAIN checking** for services that require non-existent domains
+- **HTTP status code verification** for specific vulnerability patterns
+- **CI/CD verification status** display
+- HTTP vulnerability verification
+- Colorized console output
+- Optional text result file for every subdomain that matches a cloud service
+- Built-in `fingerprints.json` and `cloud_services.json`, used unless you pass your own
+- Support for multiple cloud services (AWS, Azure, GitHub, Heroku, and others)
+- Backward compatibility with the legacy cloud services format
 
 ## Installation
 
@@ -32,9 +33,9 @@ This script scans a list of subdomains to identify potential subdomain takeover 
 
 ### Steps
 
-1. Clone or download this repository:
+1. Clone this repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/nzanoaliango/SubdomainTakeOver.git
 cd SubdomainTakeOver
 ```
 
@@ -52,47 +53,71 @@ The required packages are:
 
 ### Basic Usage
 
-#### Recommended: Using Fingerprints Database (New)
+The project ships with `fingerprints.json` and `cloud_services.json`. Those files are used automatically. The only required argument is the subdomain list.
 
 ```bash
-python subdomain_takeover.py -f subdomains.txt -p fingerprints.json
+python subdomain_takeover.py -f subdomains.txt
 ```
 
-#### Legacy: Using Cloud Services Database
+Pass `-p` or `-s` only when you want a different fingerprints or cloud services file.
 
 ```bash
-python subdomain_takeover.py -f subdomains.txt -s cloud_services.json
+python subdomain_takeover.py -f subdomains.txt -p custom_fingerprints.json
+python subdomain_takeover.py -f subdomains.txt -s custom_cloud_services.json
 ```
 
-#### Using Both (Fingerprints Preferred, Cloud Services as Fallback)
+Write a text result for each subdomain that matches a cloud service:
 
 ```bash
-python subdomain_takeover.py -f subdomains.txt -p fingerprints.json -s cloud_services.json
+python subdomain_takeover.py -f subdomains.txt -o results.txt
 ```
 
 ### Arguments
 
 - `-f, --file, --filename`: Path to a text file containing a list of subdomains (one per line) **[Required]**
-- `-p, --fingerprints`: Path to a JSON file containing fingerprints database (recommended) - e.g., `fingerprints.json`
-- `-s, --service, --services`: Path to a JSON file containing cloud service mappings (legacy format) - e.g., `cloud_services.json`
+- `-p, --fingerprints`: Path to a JSON fingerprints database. Optional. Defaults to `fingerprints.json` in the project directory.
+- `-s, --service, --services`: Path to a JSON cloud service mappings file. Optional. Defaults to `cloud_services.json` in the project directory.
+- `-o, --output`: Optional path for a text result file. One line for each subdomain that matches a cloud service: the subdomain, the service, and a status of `vulnerable`, `potentially vulnerable`, or `not vulnerable`. Subdomains with no cloud service are omitted.
 
-**Note**: At least one of `-p` or `-s` must be provided.
+Fingerprints are preferred. Cloud services are used as a fallback when a CNAME does not match the fingerprints database.
 
 ### Examples
 
 ```bash
-# Using fingerprints database (recommended - includes vulnerability status)
-python subdomain_takeover.py -f subdomains.txt -p fingerprints.json
+# Scan with the project's fingerprints.json and cloud_services.json
+python subdomain_takeover.py -f subdomains.txt
 
-# Using legacy cloud services database
-python subdomain_takeover.py -f subdomains.txt -s cloud_services.json
+# Use a different fingerprints database
+python subdomain_takeover.py -f subdomains.txt -p custom_fingerprints.json
 
-# Using both databases (fingerprints preferred)
-python subdomain_takeover.py -f subdomains.txt -p fingerprints.json -s cloud_services.json
+# Use a different cloud services database
+python subdomain_takeover.py -f subdomains.txt -s custom_cloud_services.json
+
+# Save a text result for each subdomain that matches a cloud service
+python subdomain_takeover.py -f subdomains.txt -o results.txt
 
 # Get help
 python subdomain_takeover.py -h
 ```
+
+### Result file
+
+`-o` writes plain text. The first line is a header, then one line for each subdomain that matches a cloud service:
+
+```
+subdomain | cloud service | status
+shop.example.com | AWS/S3 | vulnerable
+blog.example.com | Github | potentially vulnerable
+cdn.example.com | AWS/Load Balancer (ELB) | not vulnerable
+```
+
+Subdomains with no matching cloud service are omitted.
+
+- `vulnerable` means the fingerprint check confirmed a takeover.
+- `potentially vulnerable` means the service is an edge case, the fingerprint could not be checked, or only the legacy cloud-service list matched.
+- `not vulnerable` means the matched service is patched, or the fingerprint did not match.
+
+When several services match one subdomain, the line keeps the most severe status and the service or services that have that status.
 
 ### Input File Formats
 
@@ -152,16 +177,16 @@ The script provides detailed, colorized output showing:
 
 ```
 ======================================================================
-[*] Checking: subdomain.example.com
+[*] Checking: edge.example.com
 ======================================================================
-CNAMEs found for subdomain.example.com:
-  [+] example.github.io
+CNAMEs found for edge.example.com:
+  [+] nonexistent-example.vercel.com.
 
 Cloud service matches (with vulnerability status):
 
-  [+] CNAME: example.github.io
-     Service: Github
-     Status: Edge case
+  [+] CNAME: nonexistent-example.vercel.com.
+     Service: Vercel
+     Status: 🟡 Edge case
      CI/CD Verified: ✗ Not verified
      ⚠ Edge case: Requires manual verification
 
@@ -169,19 +194,19 @@ Cloud service matches (with vulnerability status):
 [*] Checking: vulnerable.example.com
 ======================================================================
 CNAMEs found for vulnerable.example.com:
-  [+] example.s3.amazonaws.com
+  [+] example.s3.amazonaws.com.
 
 Cloud service matches (with vulnerability status):
 
-  [+] CNAME: example.s3.amazonaws.com
+  [+] CNAME: example.s3.amazonaws.com.
      Service: AWS/S3
-     Status: Vulnerable
+     Status: 🔴 Vulnerable
      CI/CD Verified: ✓ Pass
      [*] Verifying vulnerability fingerprint...
-      VULNERABLE: vulnerable.example.com is confirmed vulnerable!
-     Fingerprint matched: The specified bucket does not exist
-     HTTP Status: 404
-     Discussion: [Issue #36](https://github.com/EdOverflow/can-i-take-over-xyz/issues/36)
+     🚨 VULNERABLE: vulnerable.example.com is confirmed vulnerable!
+        Fingerprint matched: The specified bucket does not exist...
+        HTTP Status: 404
+        Discussion: [Issue #36](https://github.com/EdOverflow/can-i-take-over-xyz/issues/36)
 
 ======================================================================
 Summary:
@@ -193,7 +218,10 @@ Summary:
 ## Configuration Files
 
 ### `cloud_services.json`
-Contains a mapping of cloud service names to their domain patterns tracked by the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) project. This file lists cloud services that may be vulnerable to subdomain takeover. The file can be customized to include additional services.
+Contains a mapping of cloud service names to their domain patterns tracked by the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) project. This file is the default for `-s`. It can be customized, or replaced at runtime with another file.
+
+### `cloud_services_all.json`
+A broader cloud-service list, including entries that are not in `cloud_services.json`. Pass it with `-s cloud_services_all.json` when you want that wider set. `all_clouds.txt` is the same service names, one per line, for reference.
 
 ### `fingerprints.json`
 Contains detailed fingerprint data from the [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) project, including:
@@ -216,7 +244,7 @@ The script now integrates with the [can-i-take-over-xyz](https://github.com/EdOv
 1.  **Check Vulnerability Status**: Verify if a detected cloud service is actually vulnerable or has been patched
 2.  **Fingerprint Matching**: Use specific error messages and fingerprints to confirm vulnerabilities
 3.  **NXDOMAIN Detection**: Identify services that require non-existent domains (NXDOMAIN)
-4.  **Status Filtering**: Only report services that are confirmed vulnerable (not patched or edge cases)
+4.  **Status reporting**: Show whether a matched service is vulnerable, not vulnerable, or an edge case
 5.  **CI/CD Verification**: Show whether the vulnerability has been verified by automated CI/CD tests
 6.  **Smart Detection**: Skips fingerprint verification for services that are known to be patched or not vulnerable
 
@@ -257,6 +285,6 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ---
 
-**Last Updated**: December 21, 2025
-**Version**: 1.0.0
+**Last Updated**: October 7, 2026
+**Version**: 1.1.0
 
