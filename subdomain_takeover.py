@@ -291,21 +291,18 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None, outp
                             # Color code based on vulnerability status
                             if is_vulnerable:
                                 status_color = Fore.LIGHTRED_EX
-                                status_icon = "🔴"
                             elif status == "Edge case":
                                 status_color = Fore.YELLOW
-                                status_icon = "🟡"
                             else:
                                 status_color = Fore.GREEN
-                                status_icon = "🟢"
                             
                             print(f"\n  {Fore.YELLOW}[+] CNAME: {match['cname']}{Style.RESET_ALL}")
                             print(f"     Service: {Fore.LIGHTMAGENTA_EX}{service_name}{Style.RESET_ALL}")
-                            print(f"     Status: {status_color}{status_icon} {status}{Style.RESET_ALL}")
+                            print(f"     Status: {status_color}{status}{Style.RESET_ALL}")
                             if cicd_pass:
-                                print(f"     CI/CD Verified: {Fore.GREEN}✓ Pass{Style.RESET_ALL}")
+                                print(f"     CI/CD Verified: {Fore.GREEN}Pass{Style.RESET_ALL}")
                             else:
-                                print(f"     CI/CD Verified: {Fore.YELLOW}✗ Not verified{Style.RESET_ALL}")
+                                print(f"     CI/CD Verified: {Fore.YELLOW}Not verified{Style.RESET_ALL}")
                             
                             # Only check fingerprints for vulnerable services
                             if is_vulnerable:
@@ -316,7 +313,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None, outp
                                 if is_confirmed:
                                     vulnerable_count += 1
                                     findings.append((service_name, STATUS_VULNERABLE))
-                                    print(f"     {Fore.LIGHTRED_EX}🚨 VULNERABLE: {subdomain} is confirmed vulnerable!{Style.RESET_ALL}")
+                                    print(f"     {Fore.LIGHTRED_EX}VULNERABLE: {subdomain} is confirmed vulnerable!{Style.RESET_ALL}")
                                     print(f"     {Fore.LIGHTRED_EX}   Fingerprint matched: {match['fingerprint'][:50]}...{Style.RESET_ALL}")
                                     if status_code:
                                         print(f"     {Fore.LIGHTRED_EX}   HTTP Status: {status_code}{Style.RESET_ALL}")
@@ -326,16 +323,16 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None, outp
                                         print(f"     {Fore.CYAN}   Documentation: {match['documentation']}{Style.RESET_ALL}")
                                 elif is_confirmed is False:
                                     findings.append((service_name, STATUS_NOT_VULNERABLE))
-                                    print(f"     {Fore.GREEN}✓ Not vulnerable: Fingerprint not matched{Style.RESET_ALL}")
+                                    print(f"     {Fore.GREEN}Not vulnerable: Fingerprint not matched{Style.RESET_ALL}")
                                 else:
                                     findings.append((service_name, STATUS_POTENTIALLY_VULNERABLE))
-                                    print(f"     {Fore.YELLOW}⚠ Could not verify: {response_info}{Style.RESET_ALL}")
+                                    print(f"     {Fore.YELLOW}Could not verify: {response_info}{Style.RESET_ALL}")
                             elif status == "Edge case":
                                 findings.append((service_name, STATUS_POTENTIALLY_VULNERABLE))
-                                print(f"     {Fore.YELLOW}⚠ Edge case: Requires manual verification{Style.RESET_ALL}")
+                                print(f"     {Fore.YELLOW}Edge case: Requires manual verification{Style.RESET_ALL}")
                             else:
                                 findings.append((service_name, STATUS_NOT_VULNERABLE))
-                                print(f"     {Fore.GREEN}✓ Not vulnerable: Service has been patched{Style.RESET_ALL}")
+                                print(f"     {Fore.GREEN}Not vulnerable: Service has been patched{Style.RESET_ALL}")
                     
                     # Fallback to cloud_services if no fingerprint matches
                     if not fingerprint_matches and cloud_services:
@@ -345,7 +342,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None, outp
                             for cname, service in old_matches:
                                 findings.append((service, STATUS_POTENTIALLY_VULNERABLE))
                                 print(f"  {Fore.YELLOW}[+] {cname}{Style.RESET_ALL} Uses Cloud Service: {Fore.LIGHTRED_EX}{service}{Style.RESET_ALL}")
-                                print(f"     {Fore.YELLOW}⚠ No vulnerability status available - using legacy database{Style.RESET_ALL}")
+                                print(f"     {Fore.YELLOW}No vulnerability status available - using legacy database{Style.RESET_ALL}")
                 
                 # Step 3: Fallback to cloud_services if fingerprints not available
                 elif cloud_services:
@@ -355,7 +352,7 @@ def main(subdomains_file, fingerprints_file=None, cloud_services_file=None, outp
                         for cname, service in matches:
                             findings.append((service, STATUS_POTENTIALLY_VULNERABLE))
                             print(f"  {Fore.YELLOW}[+] {cname}{Style.RESET_ALL} Uses Cloud Service: {Fore.LIGHTRED_EX}{service}{Style.RESET_ALL}")
-                            print(f"     {Fore.YELLOW}⚠ No vulnerability status available - using legacy database{Style.RESET_ALL}")
+                            print(f"     {Fore.YELLOW}No vulnerability status available - using legacy database{Style.RESET_ALL}")
             
             # No CNAME found - skip silently or show if verbose
             # (Keeping silent for cleaner output)

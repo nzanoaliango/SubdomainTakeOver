@@ -186,9 +186,9 @@ Cloud service matches (with vulnerability status):
 
   [+] CNAME: nonexistent-example.vercel.com.
      Service: Vercel
-     Status: 🟡 Edge case
-     CI/CD Verified: ✗ Not verified
-     ⚠ Edge case: Requires manual verification
+     Status: Edge case
+     CI/CD Verified: Not verified
+     Edge case: Requires manual verification
 
 ======================================================================
 [*] Checking: vulnerable.example.com
@@ -200,10 +200,10 @@ Cloud service matches (with vulnerability status):
 
   [+] CNAME: example.s3.amazonaws.com.
      Service: AWS/S3
-     Status: 🔴 Vulnerable
-     CI/CD Verified: ✓ Pass
+     Status: Vulnerable
+     CI/CD Verified: Pass
      [*] Verifying vulnerability fingerprint...
-     🚨 VULNERABLE: vulnerable.example.com is confirmed vulnerable!
+     VULNERABLE: vulnerable.example.com is confirmed vulnerable!
         Fingerprint matched: The specified bucket does not exist...
         HTTP Status: 404
         Discussion: [Issue #36](https://github.com/EdOverflow/can-i-take-over-xyz/issues/36)
@@ -262,7 +262,7 @@ The script now integrates with the [can-i-take-over-xyz](https://github.com/EdOv
 
 ## Disclaimer
 
-⚠️ **This tool is for authorized security testing only.**
+**This tool is for authorized security testing only.**
 
 - Only use this tool on domains you own or have explicit permission to test
 - Respect bug bounty program policies and scope
